@@ -1,4 +1,4 @@
-package main
+package internal
 
 import (
 	"encoding/json"
@@ -25,12 +25,19 @@ type Option struct {
 	StrikePrice      float32
 	BidPremium       float32
 	AskPremium       float32
+	LastPremium      float32
+	OpenInterest     int
+	Volume           int
 	OptionType       OptionType
+	TimeSeen         int
 }
 
 type ResultPrices struct {
-	BidPrice float32 `json:"b"`
-	AskPrice float32 `json:"a"`
+	BidPremium   float32 `json:"b"`
+	AskPremium   float32 `json:"a"`
+	LastPremium  float32 `json:"l"`
+	OpenInterest int     `json:"oi"`
+	Volume       int     `json:"v"`
 }
 
 type Result struct {
@@ -77,11 +84,24 @@ func GetPriceForTicker(ticker string) float32 {
 }
 
 func FormatOption(contract Option) string {
-	formattedType := "C"
+	formattedType := "c"
 	if contract.OptionType == Put {
-		formattedType = "P"
+		formattedType = "p"
 	}
-	return fmt.Sprintf("%s (%.2f), Exp. %s, %.2f%s, %.2f - %.2f", contract.UnderlyingTicker, contract.UnderlyingPrice, contract.ExpirationDate, contract.StrikePrice, formattedType, contract.BidPremium, contract.AskPremium)
+	items := []string{
+		fmt.Sprintf("%d", contract.TimeSeen),
+		contract.UnderlyingTicker,
+		fmt.Sprintf("%.2f", contract.UnderlyingPrice),
+		contract.ExpirationDate,
+		fmt.Sprintf("%.2f", contract.StrikePrice),
+		formattedType,
+		fmt.Sprintf("%.2f", contract.BidPremium),
+		fmt.Sprintf("%.2f", contract.AskPremium),
+		fmt.Sprintf("%.2f", contract.LastPremium),
+		fmt.Sprintf("%d", contract.OpenInterest),
+		fmt.Sprintf("%d", contract.Volume),
+	}
+	return strings.Join(items, ",")
 }
 
 func GetOptionsForTicker(ticker string) []Option {
@@ -110,6 +130,8 @@ func GetOptionsForTicker(ticker string) []Option {
 	var result Result
 	json.Unmarshal(body, &result)
 
+	now := time.Now()
+
 	allContracts := make([]Option, 0)
 
 	underlyingPrice := GetPriceForTicker(ticker)
@@ -126,14 +148,18 @@ func GetOptionsForTicker(ticker string) []Option {
 					log.Fatal(parseErr)
 				}
 				contract.StrikePrice = float32(parsedStrike)
-				contract.BidPremium = prices.BidPrice
-				contract.AskPremium = prices.AskPrice
+				contract.BidPremium = prices.BidPremium
+				contract.AskPremium = prices.AskPremium
+				contract.LastPremium = prices.LastPremium
+				contract.OpenInterest = prices.OpenInterest
+				contract.Volume = prices.Volume
 				if side == "c" {
 					contract.OptionType = Call
 				}
 				if side == "p" {
 					contract.OptionType = Put
 				}
+				contract.TimeSeen = int(now.Unix())
 
 				allContracts = append(allContracts, contract)
 			}

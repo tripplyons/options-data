@@ -2,15 +2,20 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"strings"
 
 	inter "github.com/tripplyons/options-data/internal"
 )
 
 func main() {
-	fmt.Printf("%f\n", inter.GetPriceForTicker("SPY"))
-	options := inter.GetOptionsForTicker("SPY")
+	tickers := strings.Split(os.Args[1], ",")
 
-	for _, option := range options[:10] {
-		fmt.Println(inter.FormatOption(option))
+	for _, ticker := range tickers {
+		options := inter.GetOptionsForTicker(ticker)
+
+		for _, option := range options {
+			fmt.Println(inter.FormatOption(option))
+		}
 	}
 }
